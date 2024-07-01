@@ -1,13 +1,5 @@
 import streamlit as st
-from PIL import Image
-import cv2
-import numpy as np
-import skimage as ski
-import matplotlib.image as mpimg
-import matplotlib.pyplot as plt
-import base64
-import random
-import numpy as np
+import streamlit as st
 from glob import glob
 from PIL import Image, ImageOps
 import matplotlib.pyplot as plt
@@ -15,11 +7,6 @@ from tensorflow.keras.models import load_model
 import tensorflow as tf
 import keras.backend as K
 import keras
-from keras import layers
-import tensorflow as tf
-from tensorflow.keras.preprocessing.image import img_to_array, load_img
-from PIL import Image
-import io
 plt.gray()
 
 # Function to add a background and adjust the layout width
