@@ -18,7 +18,6 @@ import keras
 from keras import layers
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import img_to_array, load_img
-from tensorflow.keras.utils import register_keras_serializable
 from PIL import Image
 import io
 plt.gray()
@@ -44,10 +43,12 @@ def setup_page():
         """,
         unsafe_allow_html=True
     )
+
 selected_box = st.sidebar.selectbox(
 'Choose one of the following',
 ('Home', 'Upscale your Image', 'How it Works?')
 )
+
 def home():
     st.title('Image Upscaling')
     st.subheader("Motivation for the Project")
@@ -56,12 +57,22 @@ def home():
     st.write("Our proposed model begins by implementing a mechanism to determine whether the input image exhibits characteristics of low-light conditions.Causes of low-light conditions can be due to insufficient or absent light source or uneven illumination caused by back-light and shadows. Subsequently, we will develop a function capable of discerning whether the given image meets the criteria for low-light classification. Upon identification of a low-light image, we will employ the Zero DCE model to enhance its brightness.")
     st.write("Following the enhancement process through the Zero DCE model, the image will undergo further refinement using the Super Resolution model. This subsequent step aims to produce a substantially clearer and denoised version of the image, leveraging the sophisticated capabilities inherent to the Super Resolution model.")
     st.write("In essence, our model is designed to automatically detect and address low-light scenarios in images, enhance their brightness using Zero DCE, and further refine them to achieve superior clarity and noise reduction through the Super Resolution model. This holistic approach ensures that images exhibiting low-light conditions are effectively processed to yield optimal visual outcomes.")
+
+
 def analyze_image(img):
+
     gray_img = img.convert('L')
+
     img_array = np.array(gray_img)
+
+
     brightness = np.mean(img_array)
+
     contrast = np.std(img_array)
+
     return brightness<60 and contrast<50
+
+
 def build_dce_net(): 
     input_img = keras.Input(shape=[None, None, 3])
     conv1 = layers.Conv2D(
@@ -280,10 +291,14 @@ def model1(img):
     enhanced_img_pil = Image.fromarray(enhanced_img)
     return enhanced_img_pil
 
-# @register_keras_serializable(name="custom_object_name1")
-def PSNR(y_true, y_pred):
+# def PSNR12(y_true, y_pred):
+#     max_pixel = 1.0
+#     return (10.0 * tf.math.log((max_pixel ** 2) / (K.mean(K.square(y_pred - y_true)))) / tf.math.log(10.0))
+
+def PSNR12(y_true, y_pred):
     max_pixel = 1.0
-    return (10.0 * tf.math.log((max_pixel ** 2) / (K.mean(K.square(y_pred - y_true)))) / tf.math.log(10.0))
+    return (10.0 * tf.math.log((max_pixel ** 2) / (tf.math.reduce_mean(tf.math.square(y_pred - y_true))))) / tf.math.log(10.0)
+
 
 def compute_psnr(y_true, y_pred):
     y_true = tf.convert_to_tensor(y_true, dtype=tf.float32)
@@ -291,12 +306,21 @@ def compute_psnr(y_true, y_pred):
     psnr = tf.image.psnr(y_true, y_pred, max_val=1.0)
     return tf.reduce_mean(psnr)
 
-# @register_keras_serializable(name="custom_object_name1")
-def compute_ssim(original_image, generated_image):
+
+def compute_ssim12(original_image, generated_image):
+
     original_image = tf.convert_to_tensor(original_image, dtype = tf.float32)
     generated_image = tf.convert_to_tensor(generated_image, dtype = tf.float32)
+
     ssim = tf.image.ssim(original_image, generated_image, max_val = 1.0, filter_size = 11, filter_sigma = 1.5, k1 = 0.01, )
+
     return tf.math.reduce_mean(ssim, axis = None, keepdims = False, name = None)
+
+# def compute_ssim12(y_true, y_pred):
+#     y_true = tf.convert_to_tensor(y_true, dtype=tf.float32)
+#     y_pred = tf.convert_to_tensor(y_pred, dtype=tf.float32)
+#     ssim = tf.image.ssim(y_true, y_pred, max_val=1.0)
+#     return tf.reduce_mean(ssim)
 
 class GaussianBlur2D(tf.keras.layers.Layer):
     def __init__(self, kernel_size=3, sigma=1.0, **kwargs):
@@ -319,25 +343,38 @@ class GaussianBlur2D(tf.keras.layers.Layer):
         g_kernel = tf.expand_dims(g_kernel, axis=-1)
         g_kernel = tf.expand_dims(g_kernel, axis=-1)
         return tf.tile(g_kernel, [1, 1, num_channels, 1])
-    
+
 def model2(img):
+
     model_path = "C:/Users/LENOVO/Desktop/imageUpscale/mymodelsuper.h5"
 
     with keras.utils.custom_object_scope({'GaussianBlur2D': GaussianBlur2D}):
         model = load_model(model_path)
-        
-    model.compile(optimizer='adam', loss='mse', metrics=['accuracy', compute_psnr, compute_ssim])
+
+
+    # model = load_model(model_path)
+
     if img.mode != 'RGB':
         img = img.convert('RGB')
+
+
     original_size = img.size  
+
     img = img.resize((256, 256))
+
     img_array = img_to_array(img) / 255.0
+
     img_array = np.expand_dims(img_array, axis=0)
+
     enhanced_img_array = model.predict(img_array)[0]
+
     enhanced_img_array = np.clip(enhanced_img_array, 0, 1)
     enhanced_img = (enhanced_img_array * 255).astype(np.uint8)
-    resized_img = Image.fromarray(enhanced_img).resize(original_size, Image.LANCZOS)
+
+    resized_img = Image.fromarray(enhanced_img).resize(original_size, Image.BILINEAR)
+
     return resized_img
+
 
 def photo():
     st.header("Image UpScaling using ML Techniques")
@@ -346,29 +383,34 @@ def photo():
         img = Image.open(uploaded_file)
         if analyze_image(img):
          im1=model1(img)
-         #im2=model2(im1)
-         
+         im2=model2(im1)
          st.image(img, caption='Original Image')
          st.image(im1, caption='Bright Image')
-        #  st.image(im2, caption='Upscaled Image')
+         st.image(im2, caption='Upscaled Image')
         else:
          im1=model2(img)
          st.image(img, caption='Original Image')
          st.image(im1, caption='Upscaled Image')
         
+
         
+
         if st.button("Download Upscaled Image"):
-                download_img(im1)
+                download_img(im2)
+
+
 def download_img(image):
     img_bytes = io.BytesIO()
     image.save(img_bytes, format='PNG')
     img_bytes.seek(0)
+
     st.download_button(
         label="Click to download",
         data=img_bytes,
         file_name='upscaled_image.png',
         mime='image/png',
     )
+
 def info():
     st.header("How  it Works?")
     st.subheader("ZERO-DCE MODEL")
@@ -382,10 +424,12 @@ def info():
         st.image(image1, caption='Image with low brightness', use_column_width=True)
     with col2:
         st.image(image2, caption='Image after being passed through the model', use_column_width=True)
+
     st.subheader("SUPER RESOLUTION MODEL")
     st.write("ResNet architecture, initially developed for image classification, has been repurposed for the task of super-resolution. By embracing residual learning, where the model learns to predict the difference between low and high-resolution images, ResNet-based models excel at preserving critical visual details while enhancing image resolution. This strategy enables the model to focus on capturing fine-grained features crucial for improving image quality.")
     st.write("Integral to ResNet-based super-resolution models are skip connections, facilitating smoother gradient flow through the network and mitigating the vanishing gradient problem. These connections retain valuable information from earlier layers and help the model capture intricate image structures and long-range dependencies more effectively. During training, loss functions like mean squared error or perceptual loss functions measure the discrepancy between model predictions and ground truth images, guiding the optimization process.")
     st.write("Furthermore, ResNet-based super-resolution models employ upsampling techniques like bicubic interpolation or transposed convolutions to upscale low-resolution feature maps, enhancing the visual quality of generated images. This approach finds applications across diverse domains, including medical imaging, satellite imaging, surveillance, and the enhancement of low-quality videos or images. Leveraging ResNet's robust architecture, these models contribute significantly to advancing image processing and computer vision tasks, enabling the generation of high-quality images from low-quality inputs.")
+
     image3=Image.open("C:/Users/LENOVO/Desktop/imageUpscale/images/car1.jpg")
     image4=Image.open("C:/Users/LENOVO/Desktop/imageUpscale/images/car2.jpg")
     col1, col2 = st.columns(2)
@@ -393,8 +437,10 @@ def info():
         st.image(image3, caption='Low-Resolution Image', use_column_width=True)
     with col2:
         st.image(image4, caption='Image after being passed through the model', use_column_width=True)
+
 # Setup page layout and background
 setup_page()
+
 if selected_box == 'Home':
     home()
 elif selected_box == 'Upscale your Image':
