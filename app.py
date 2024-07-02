@@ -1,4 +1,13 @@
 import streamlit as st
+from PIL import Image
+import cv2
+import numpy as np
+import skimage as ski
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
+import base64
+import random
+import numpy as np
 from glob import glob
 from PIL import Image, ImageOps
 import matplotlib.pyplot as plt
@@ -9,10 +18,10 @@ import keras
 from keras import layers
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import img_to_array, load_img
-from tensorflow.keras.utils import register_keras_serializable
 from PIL import Image
 import io
 plt.gray()
+
 
 
 # Function to add a background and adjust the layout width
@@ -318,7 +327,7 @@ def model2(img):
     with keras.utils.custom_object_scope({'GaussianBlur2D': GaussianBlur2D}):
         model = load_model(model_path)
         
-    model.compile(optimizer='adam', loss='mse', metrics=['accuracy', compute_psnr, compute_ssim])
+    model.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy', compute_psnr, compute_ssim])
     if img.mode != 'RGB':
         img = img.convert('RGB')
     original_size = img.size  
@@ -328,7 +337,7 @@ def model2(img):
     enhanced_img_array = model.predict(img_array)[0]
     enhanced_img_array = np.clip(enhanced_img_array, 0, 1)
     enhanced_img = (enhanced_img_array * 255).astype(np.uint8)
-    resized_img = Image.fromarray(enhanced_img).resize(original_size, Image.LANCZOS)
+    resized_img = Image.fromarray(enhanced_img).resize(original_size, Image.Resampling.LANCZOS)
     return resized_img
 
 def photo():
@@ -338,11 +347,11 @@ def photo():
         img = Image.open(uploaded_file)
         if analyze_image(img):
          im1=model1(img)
-         #im2=model2(im1)
+         im2=model2(im1)
          
          st.image(img, caption='Original Image')
          st.image(im1, caption='Bright Image')
-        #  st.image(im2, caption='Upscaled Image')
+         st.image(im2, caption='Upscaled Image')
         else:
          im1=model2(img)
          st.image(img, caption='Original Image')
