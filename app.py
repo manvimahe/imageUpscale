@@ -1,13 +1,4 @@
 import streamlit as st
-from PIL import Image
-import cv2
-import numpy as np
-import skimage as ski
-import matplotlib.image as mpimg
-import matplotlib.pyplot as plt
-import base64
-import random
-import numpy as np
 from glob import glob
 from PIL import Image, ImageOps
 import matplotlib.pyplot as plt
@@ -22,6 +13,7 @@ from tensorflow.keras.utils import register_keras_serializable
 from PIL import Image
 import io
 plt.gray()
+
 
 # Function to add a background and adjust the layout width
 def setup_page():
